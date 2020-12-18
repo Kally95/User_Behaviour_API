@@ -19,6 +19,7 @@ const (
 
 var (
 	ErrEmptyUsername = errors.New("Username cannot be empty")
+	ErrUserNameTaken = errors.New("This username already exists")
 )
 
 // User creates a user instance
@@ -35,7 +36,7 @@ type PostgresDBObject struct {
 	db *sql.DB
 }
 
-// Opendb opens the database with the postgres credentials.
+// OpenDB opens the database with the postgres credentials.
 func OpenDB() *sql.DB {
 
 	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
@@ -50,6 +51,8 @@ func OpenDB() *sql.DB {
 	return db
 }
 
+// Insert is a method attached to PostgresDBObject
+// that inserts a user into the database.
 func (p PostgresDBObject) Insert(user User) error {
 	sqlStatement := `
 		INSERT INTO users (username, password)
@@ -59,7 +62,6 @@ func (p PostgresDBObject) Insert(user User) error {
 
 	if err != nil {
 		return err
-		//errors.New("db_error: couldn't execute sql statement")
 	}
 	return nil
 }
@@ -71,10 +73,12 @@ func InsertIntoDB(db DB, user User) {
 	}
 }
 
+// ======================= VALIDATIONS =======================
+
 // NormaliseUsername will clean the input data for
 // the user's username before passing it is executed
 // by the DB query.
-func NormaliseUsername(user *User) error {
+func (p PostgresDBObject) NormaliseUsername(user *User) error {
 	if user.Username == "" {
 		return ErrEmptyUsername
 	}
@@ -83,6 +87,20 @@ func NormaliseUsername(user *User) error {
 	user.Username = strings.Title(user.Username)
 	return nil
 }
+
+// UsernameCheck checks whether the username is already
+// in use.
+func (p PostgresDBObject) UsernameCheck(u *User) error {
+	sqlStmt := `SELECT username FROM users WHERE username=$1;`
+	row := p.db.QueryRow(sqlStmt)
+	err := row.Scan(u.Username)
+	if err != nil {
+		return nil
+	}
+	return ErrUserNameTaken
+}
+
+// ======================= END =======================
 
 // SignUp processes incoming POST request for users who
 // wish to log in.
@@ -99,7 +117,13 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		db: OpenDB(),
 	}
 
-	if err := NormaliseUsername(&user); err != nil {
+	var p PostgresDBObject
+
+	if err := p.UsernameCheck(&user); err != nil {
+		fmt.Println(err)
+	}
+
+	if err := p.NormaliseUsername(&user); err != nil {
 		fmt.Println(err)
 	}
 
