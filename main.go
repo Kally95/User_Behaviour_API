@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -20,6 +21,7 @@ const (
 var (
 	ErrEmptyUsername = errors.New("Username cannot be empty")
 	ErrUserNameTaken = errors.New("This username already exists")
+	ErrDBError       = errors.New("There was an error querying the databse")
 )
 
 // User creates a user instance
@@ -90,14 +92,32 @@ func (p PostgresDBObject) NormaliseUsername(user *User) error {
 
 // UsernameCheck checks whether the username is already
 // in use.
-func (p PostgresDBObject) UsernameCheck(u *User) error {
+func (p PostgresDBObject) UsernameCheck(u *User) bool {
 	sqlStmt := `SELECT username FROM users WHERE username=$1;`
 	row := p.db.QueryRow(sqlStmt)
 	err := row.Scan(u.Username)
 	if err != nil {
-		return nil
+		if err != sql.ErrNoRows {
+			log.Print(ErrDBError)
+		}
+		return false
 	}
-	return ErrUserNameTaken
+	return true
+}
+
+// PasswordCheck checks whether the password matches
+// the given password.
+func (p PostgresDBObject) PasswordCheck(u *User) bool {
+	sqlStmt := `SELECT password FROM users WHERE password=$1;`
+	row := p.db.QueryRow(sqlStmt)
+	err := row.Scan(u.Password)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Print(ErrDBError)
+		}
+		return false
+	}
+	return true
 }
 
 // ======================= END =======================
@@ -119,22 +139,27 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 
 	var p PostgresDBObject
 
-	if err := p.UsernameCheck(&user); err != nil {
-		fmt.Println(err)
-	}
-
 	if err := p.NormaliseUsername(&user); err != nil {
-		fmt.Println(err)
+		log.Print(err)
+		http.Redirect(w, r, "/signup", 400)
 	}
 
-	// InsertIntoDB(db, u)
 	InsertIntoDB(db, user)
 }
 
 // LogIn processes incoming GET requests for users who
 // wish to sign up.
 func LogIn(w http.ResponseWriter, r *http.Request) {
-	// TODO
+	var user User
+	var p PostgresDBObject
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		fmt.Print(err)
+	}
+	if p.UsernameCheck(&user) && p.PasswordCheck(&user) {
+		w.WriteHeader(200)
+	} else {
+		http.Redirect(w, r, "/login", 400)
+	}
 }
 
 func main() {
