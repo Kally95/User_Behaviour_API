@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	_ "github.com/lib/pq"
 )
@@ -14,6 +15,10 @@ const (
 	DB_USER = "postgres"
 	DB_PASS = "secret"
 	DB_NAME = "user_behaviour_api"
+)
+
+var (
+	ErrEmptyUsername = errors.New("Username cannot be empty")
 )
 
 // User creates a user instance
@@ -66,20 +71,38 @@ func InsertIntoDB(db DB, user User) {
 	}
 }
 
+// NormaliseUsername will clean the input data for
+// the user's username before passing it is executed
+// by the DB query.
+func NormaliseUsername(user *User) error {
+	if user.Username == "" {
+		return ErrEmptyUsername
+	}
+	user.Username = strings.ToLower(user.Username)
+	user.Username = strings.TrimSpace(user.Username)
+	user.Username = strings.Title(user.Username)
+	return nil
+}
+
 // SignUp processes incoming POST request for users who
 // wish to log in.
 func SignUp(w http.ResponseWriter, r *http.Request) {
 	var user User
 
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		errors.New("error: Issues with parsing the request body")
-		return
+		fmt.Print(err)
 	}
+
 	var db DB
 
 	db = PostgresDBObject{
 		db: OpenDB(),
 	}
+
+	if err := NormaliseUsername(&user); err != nil {
+		fmt.Println(err)
+	}
+
 	// InsertIntoDB(db, u)
 	InsertIntoDB(db, user)
 }
