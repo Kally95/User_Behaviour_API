@@ -17,7 +17,7 @@ var (
 	// is empty during NormalizeUsername and CheckUsername.
 	ErrEmptyUsername = errors.New("Username cannot be empty")
 
-	// ErrUserNameTaken is returned when CheckUsername finds
+	// ErrUserNameExists is returned when CheckUsername finds
 	// a duplicate of the username passed.
 	ErrUserNameExists = errors.New("This username already exists")
 
@@ -45,7 +45,7 @@ type DB interface {
 	PasswordCheck(user *User) bool
 }
 
-// PostgresDBObject represents a PSQL databse object.
+// PostgresDBObject represents a PSQL database object.
 type PostgresDBObject struct {
 	db *sql.DB
 }
