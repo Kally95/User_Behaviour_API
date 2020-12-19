@@ -75,7 +75,7 @@ func OpenDB() *sql.DB {
 
 // InsertIntoDB uses a given DB instance to insert
 // a user into a given databse.
-func InsertIntoDB(db DB, user *User) {
+func InsertIntoDB(db DB, user User) {
 	err := db.Insert(user)
 	if err != nil {
 		fmt.Println(err)
@@ -86,7 +86,7 @@ func InsertIntoDB(db DB, user *User) {
 // a DB object, this can be Mongo, SQL etc.
 // In this case we are calling the method from
 // PSQL.
-func CheckUserName(db DB, user *User) (bool, error) {
+func CheckUserName(db DB, user User) (bool, error) {
 	exists := db.CheckUsername(user)
 	if exists {
 		return true, ErrUserNameExists
@@ -98,7 +98,7 @@ func CheckUserName(db DB, user *User) (bool, error) {
 // a DB object, this can be Mongo, SQLetc.
 // In this case we are calling the method from
 // PSQL.
-func CheckPassword(db DB, user *User) (bool, error) {
+func CheckPassword(db DB, user User) (bool, error) {
 	match := db.PasswordCheck(user)
 	if match {
 		return true, nil
@@ -188,7 +188,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 	}
 
-	_, err := CheckUserName(db, &user)
+	_, err := CheckUserName(db, user)
 	if err != nil {
 		if err == ErrUserNameExists {
 			http.Redirect(w, r, "/signup", http.StatusBadRequest)
@@ -198,7 +198,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	InsertIntoDB(db, &user)
+	InsertIntoDB(db, user)
 
 	w.WriteHeader(http.StatusCreated)
 }
@@ -213,16 +213,14 @@ func LogIn(w http.ResponseWriter, r *http.Request) {
 		fmt.Print(err)
 	}
 
-	exists, err := CheckUserName(db, &user)
+	exists, err := CheckUserName(db, user)
 	if err != ErrUserNameExists {
 		log.Print(ErrDBError)
-		return
 	}
 
-	pwdMatch, err := CheckPassword(db, &user)
+	pwdMatch, err := CheckPassword(db, user)
 	if err != nil {
 		log.Print(ErrPwdIncorrect)
-		return
 	}
 
 	if pwdMatch && exists {
