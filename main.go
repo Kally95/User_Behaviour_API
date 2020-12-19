@@ -108,6 +108,8 @@ func CheckPassword(db DB, user User) (bool, error) {
 
 // ======================= END =======================
 
+// ======================= PSQL METHODS =======================
+
 // Insert is a method attached to PostgresDBObject
 // that inserts a user into the database.
 func (p PostgresDBObject) Insert(user User) error {
@@ -122,8 +124,6 @@ func (p PostgresDBObject) Insert(user User) error {
 	}
 	return nil
 }
-
-// ======================= PSQL VALIDATIONS =======================
 
 // NormaliseUsername will clean the input data for
 // the user's username before passing it is executed
