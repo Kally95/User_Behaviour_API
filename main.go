@@ -41,8 +41,8 @@ const (
 // condition.
 type DB interface {
 	Insert(user User) error
-	CheckUsername(user User) bool
-	PasswordCheck(user User) bool
+	CheckUsername(user *User) bool
+	PasswordCheck(user *User) bool
 }
 
 // PostgresDBObject represents a PSQL databse object.
@@ -87,7 +87,7 @@ func InsertIntoDB(db DB, user User) {
 // In this case we are calling the method from
 // PSQL.
 func CheckUserName(db DB, user User) (bool, error) {
-	exists := db.CheckUsername(user)
+	exists := db.CheckUsername(&user)
 	if exists {
 		return true, ErrUserNameExists
 	}
@@ -99,7 +99,7 @@ func CheckUserName(db DB, user User) (bool, error) {
 // In this case we are calling the method from
 // PSQL.
 func CheckPassword(db DB, user User) (bool, error) {
-	match := db.PasswordCheck(user)
+	match := db.PasswordCheck(&user)
 	if match {
 		return true, nil
 	}
@@ -112,7 +112,7 @@ func CheckPassword(db DB, user User) (bool, error) {
 
 // Insert is a method attached to PostgresDBObject
 // that inserts a user into the database.
-func (p PostgresDBObject) Insert(user User) error {
+func (p *PostgresDBObject) Insert(user User) error {
 	sqlStatement := `
 		INSERT INTO users (username, password)
 		VALUES ($1, $2)`
@@ -128,7 +128,7 @@ func (p PostgresDBObject) Insert(user User) error {
 // NormaliseUsername will clean the input data for
 // the user's username before passing it is executed
 // by the DB query.
-func (p PostgresDBObject) NormaliseUsername(user User) error {
+func (p *PostgresDBObject) NormaliseUsername(user *User) error {
 	if user.Username == "" {
 		return ErrEmptyUsername
 	}
@@ -140,7 +140,7 @@ func (p PostgresDBObject) NormaliseUsername(user User) error {
 
 // CheckUsername checks whether the username is already
 // in use.
-func (p PostgresDBObject) CheckUsername(user User) bool {
+func (p *PostgresDBObject) CheckUsername(user *User) bool {
 	sqlStmt := `SELECT username FROM users WHERE username=$1;`
 	row := p.db.QueryRow(sqlStmt)
 	err := row.Scan(user.Username)
@@ -152,7 +152,7 @@ func (p PostgresDBObject) CheckUsername(user User) bool {
 
 // PasswordCheck checks whether the password matches
 // the given password.
-func (p PostgresDBObject) PasswordCheck(user User) bool {
+func (p *PostgresDBObject) PasswordCheck(user *User) bool {
 	sqlStmt := `SELECT password FROM users WHERE password=$1;`
 	row := p.db.QueryRow(sqlStmt)
 	err := row.Scan(user.Password)
@@ -176,7 +176,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 	var p PostgresDBObject
 	var db DB
 
-	db = PostgresDBObject{
+	db = &PostgresDBObject{
 		db: OpenDB(),
 	}
 
@@ -184,7 +184,7 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 		fmt.Print(err)
 	}
 
-	if err := p.NormaliseUsername(user); err != nil {
+	if err := p.NormaliseUsername(&user); err != nil {
 		log.Print(err)
 	}
 
