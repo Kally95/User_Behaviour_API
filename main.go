@@ -194,9 +194,13 @@ func SignUp(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/signup", http.StatusBadRequest)
 		}
 		log.Print(ErrDBError)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	InsertIntoDB(db, &user)
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 // LogIn processes incoming GET requests for users who
@@ -212,16 +216,19 @@ func LogIn(w http.ResponseWriter, r *http.Request) {
 	exists, err := CheckUserName(db, &user)
 	if err != ErrUserNameExists {
 		log.Print(ErrDBError)
+		return
 	}
 
 	pwdMatch, err := CheckPassword(db, &user)
 	if err != nil {
 		log.Print(ErrPwdIncorrect)
+		return
 	}
 
 	if pwdMatch && exists {
-		w.WriteHeader(200)
+		w.WriteHeader(http.StatusOK)
 		fmt.Println("You successfully logged in")
+		return
 	}
 
 }
